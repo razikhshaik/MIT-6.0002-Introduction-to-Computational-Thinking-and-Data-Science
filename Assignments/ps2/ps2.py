@@ -44,11 +44,28 @@ def load_map(map_filename):
     """
 
     # TODO
+    d = Digraph()
     print("Loading map from file...")
+    with open(map_filename, 'r') as f:
+        for line in f.readlines():
+            #print(line.strip().split())
+            if len(line.strip().split()) == 4:
+                #print("gjhjhb")
+                src, dest, total_dist, outdoor_dist = line.strip().split()
+                src_node = Node(src)
+                dest_node = Node(dest)
+                if not d.has_node(src_node):
+                    d.add_node(src_node)
+                if not d.has_node(dest_node):
+                    d.add_node(dest_node)
+                d.add_edge(WeightedEdge(src_node, dest_node, total_dist, outdoor_dist))
+    return d
+
 
 # Problem 2c: Testing load_map
 # Include the lines used to test load_map below, but comment them out
-
+d = load_map("ps2\mit_map.txt")
+print("number of edges", len(d.edges))
 
 #
 # Problem 3: Finding the Shorest Path using Optimized Search Method
@@ -95,8 +112,43 @@ def get_best_path(digraph, start, end, path, max_dist_outdoors, best_dist,
         If there exists no path that satisfies max_total_dist and
         max_dist_outdoors constraints, then return None.
     """
-    # TODO
-    pass
+    if path == None:
+        path = [[start], 0,0]
+    #print(path)
+    if end == start:
+        return path
+    for edge in digraph.get_edges_for_node(start):
+        #print(list(map(str, digraph.get_edges_for_node(start))))
+        #print("iterating edges", edge)
+        dest_node = edge.get_destination()
+        if dest_node in path[0]:
+            continue
+        else:
+            path_total_distance = path[1] + float(edge.get_total_distance())
+            path_outdoor_distance = path[2] + float(edge.get_outdoor_distance())
+            if path_outdoor_distance > max_dist_outdoors:
+                continue
+            if best_path != None:
+                if best_path[1] < path_total_distance :
+                    continue
+            tmp = path.copy()
+            tmp[0] = path[0].copy()
+            tmp[0].append(dest_node)
+            tmp[1] = path_total_distance
+            tmp[2] = path_outdoor_distance
+            res = get_best_path(digraph, dest_node, end,  tmp, max_dist_outdoors, best_dist, best_path)
+            #print("found   ---  ", res)
+            if res != None and res[2] <= max_dist_outdoors and res != best_path:
+                #print("comparing two best paths", res, best_path)
+                if best_dist == None and best_path == None:
+                    best_dist = res[1]
+                    best_path = res.copy()
+                else:
+                    if best_path[1] > res[1]:
+                        best_dist = res[1]
+                        best_path = res.copy()
+    return best_path
+
 
 
 # Problem 3c: Implement directed_dfs
@@ -128,9 +180,14 @@ def directed_dfs(digraph, start, end, max_total_dist, max_dist_outdoors):
         If there exists no path that satisfies max_total_dist and
         max_dist_outdoors constraints, then raises a ValueError.
     """
-    # TODO
-    pass
-
+    best_path = get_best_path(digraph, Node(start), Node(end), None, float(max_dist_outdoors), None,  None)
+    print("DFS best path", best_path)
+    if best_path == None or best_path[1] > max_total_dist:
+        print("raising value error!")
+        raise ValueError
+        #return None
+    return list(map(str, best_path[0]))
+   
 
 # ================================================================
 # Begin tests -- you do not need to modify anything below this line
@@ -140,7 +197,7 @@ class Ps2Test(unittest.TestCase):
     LARGE_DIST = 99999
 
     def setUp(self):
-        self.graph = load_map("mit_map.txt")
+        self.graph = load_map("ps2\mit_map.txt")
 
     def test_load_map_basic(self):
         self.assertTrue(isinstance(self.graph, Digraph))
@@ -187,20 +244,19 @@ class Ps2Test(unittest.TestCase):
         with self.assertRaises(ValueError):
             directed_dfs(self.graph, start, end, total_dist, outdoor_dist)
 
-    def test_path_one_step(self):
-        self._test_path(expectedPath=['32', '56'])
+    
+    def test_path_multi_step(self):
+        self._test_path(expectedPath=['2', '3', '7', '9'])
+
+    def test_impossible_path2(self):
+        self._test_impossible_path('10', '32', total_dist=100)
+
 
     def test_path_no_outdoors(self):
         self._test_path(
             expectedPath=['32', '36', '26', '16', '56'], outdoor_dist=0)
-
-    def test_path_multi_step(self):
-        self._test_path(expectedPath=['2', '3', '7', '9'])
-
-    def test_path_multi_step_no_outdoors(self):
-        self._test_path(
-            expectedPath=['2', '4', '10', '13', '9'], outdoor_dist=0)
-
+    
+    
     def test_path_multi_step2(self):
         self._test_path(expectedPath=['1', '4', '12', '32'])
 
@@ -209,12 +265,19 @@ class Ps2Test(unittest.TestCase):
             expectedPath=['1', '3', '10', '4', '12', '24', '34', '36', '32'],
             outdoor_dist=0)
 
+    def test_path_one_step(self):
+        self._test_path(expectedPath=['32', '56'])
+
+    
+
     def test_impossible_path1(self):
         self._test_impossible_path('8', '50', outdoor_dist=0)
 
-    def test_impossible_path2(self):
-        self._test_impossible_path('10', '32', total_dist=100)
+    def test_path_multi_step_no_outdoors(self):
+        self._test_path(
+            expectedPath=['2', '4', '10', '13', '9'], outdoor_dist=0)
 
+    
 
 if __name__ == "__main__":
     unittest.main()

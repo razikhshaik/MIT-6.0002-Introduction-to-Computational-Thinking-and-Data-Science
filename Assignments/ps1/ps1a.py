@@ -25,7 +25,12 @@ def load_cows(filename):
     a dictionary of cow name (string), weight (int) pairs
     """
     # TODO: Your code here
-    pass
+    cow_dict = {}
+    with open(filename, 'r') as f:
+         for i in f.readlines():
+             cow_name, cow_weight = i.split(',')
+             cow_dict[cow_name] = int(cow_weight)
+    return cow_dict
 
 # Problem 2
 def greedy_cow_transport(cows,limit=10):
@@ -51,7 +56,27 @@ def greedy_cow_transport(cows,limit=10):
     trips
     """
     # TODO: Your code here
-    pass
+    transport_cow = cows.copy()
+    num_trips = 0
+    limitper_trip = limit
+    tripsummary = []
+    while len(transport_cow) > 0:
+        current_trip = []
+        limitper_trip = limit
+        x = sorted(transport_cow, key=(lambda key:transport_cow[key]), reverse=True)
+        for c in x:
+            if limitper_trip >= transport_cow[c]:
+                current_trip.append(c)
+                limitper_trip -= transport_cow[c]
+                del transport_cow[c]
+            if limitper_trip <= 0:
+                break
+        tripsummary.append(current_trip)
+        num_trips += 1
+    return tripsummary
+            
+
+
 
 # Problem 3
 def brute_force_cow_transport(cows,limit=10):
@@ -76,7 +101,72 @@ def brute_force_cow_transport(cows,limit=10):
     trips
     """
     # TODO: Your code here
-    pass
+    transport_cow = cows.copy()
+    num_trips = 0
+    limitper_trip = limit
+    tripsummary = []
+    # while len(transport_cow) > 0:
+    #     current_trip, left_overs, con, weight_left = compute_tree([], transport_cow)
+    #     transport_cow = left_overs.copy()
+    #     transport_cow = {**left_overs, **con}
+    #     tripsummary.append(current_trip)
+    #     num_trips += 1
+    # return tripsummary
+    combinations = list(get_partitions(transport_cow))
+    #print(len(combinations))
+
+    flag = True
+    legal = []
+    trip_lengths = []
+    for comb in combinations:
+        # all trips
+        num_trips = 0
+        for trip in comb:
+            load = 0
+            for c in trip:
+                load += cows[c]
+            num_trips += 1
+            if load > limit:
+                # discard this combination
+                flag = False
+        if flag:
+            legal.append(comb)
+            trip_lengths.append(num_trips)
+        else:
+            flag = True
+    index = trip_lengths.index(min(trip_lengths))
+    return legal[index]
+
+
+
+
+# this optimizes foor just one trip
+def compute_tree(trip, left_over_cows_dict, considered_but_not_added = {}, limit = 10):
+    trip = trip.copy()
+    left_over_cows_dict = left_over_cows_dict.copy()
+    considered_but_not_added = considered_but_not_added.copy()
+    con = considered_but_not_added.copy()
+    if len(left_over_cows_dict) == 0:
+        return (trip, {}, considered_but_not_added, limit)
+    if limit == 0:
+        return (trip, left_over_cows_dict, considered_but_not_added, limit)
+    cows = list(left_over_cows_dict.keys())
+    d = left_over_cows_dict.copy()
+    first_cow, weight = cows[0], left_over_cows_dict[cows[0]]
+    del d[first_cow]
+    con[first_cow] = weight
+    without_first_cow = compute_tree(trip, d, con, limit)
+    with_first_cow = None
+    if limit >= weight:
+        trip.append(first_cow)
+        with_first_cow = compute_tree(trip, d, considered_but_not_added, limit-weight)
+    if with_first_cow != None:
+        if without_first_cow[3] >= with_first_cow[3]:
+            return with_first_cow
+        else:
+            return without_first_cow
+    else:
+        return without_first_cow
         
 # Problem 4
 def compare_cow_transport_algorithms():
@@ -93,4 +183,38 @@ def compare_cow_transport_algorithms():
     Does not return anything.
     """
     # TODO: Your code here
-    pass
+    cows = load_cows("ps1\ps1_cow_data.txt")
+    start = time.time()
+    trip = greedy_cow_transport(cows)
+    timedend = time.time()
+    print("Time taken for greedy:", (timedend- start))
+    print("num of trips:", len(trip))
+    load_carried = []
+    for i in trip:
+        load = 0
+        for c in i:
+            load += cows[c]
+        load_carried.append(load)
+    print("avg load carried per trip:", float(sum(load_carried))/float(len(load_carried)))
+
+    start = time.time()
+    trip = brute_force_cow_transport(cows)
+    timedend = time.time()
+    print("Time taken fpr brute force:", (timedend- start))
+    print("num of trips:", len(trip))
+    load_carried = []
+    for i in trip:
+        load = 0
+        for c in i:
+            load += cows[c]
+        load_carried.append(load)
+    print("avg load carried per trip:", float(sum(load_carried))/float(len(load_carried)))
+
+
+if __name__ == "__main__":
+    cows = load_cows("ps1\ps1_cow_data.txt")
+    trip = greedy_cow_transport(cows)
+    print(trip)
+    #print(compute_tree([], cows))
+    print(brute_force_cow_transport(cows))
+    compare_cow_transport_algorithms()
